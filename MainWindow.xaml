@@ -1,0 +1,104 @@
+﻿<Window x:Class="ReverseGeoCoding.MainWindow"
+         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+         xmlns:gif="http://wpfanimatedgif.codeplex.com"
+       xmlns:local="clr-namespace:ReverseGeoCoding"
+       mc:Ignorable="d"
+        Title="Lepton :: ReverseGeoCoding" Height="304.558" Width="623" AllowsTransparency="True" WindowStartupLocation="CenterScreen"   WindowStyle="None">
+    <Window.Resources>
+        <ResourceDictionary Source="Theme/Layout.xaml"/>
+    </Window.Resources>
+    <Grid>
+        <StackPanel Name="pnlTopMenu" Margin="0,-120,0,0"   HorizontalAlignment="Stretch"  VerticalAlignment="Top" Height="70"  Panel.ZIndex="10000" >
+            <Border Background="White"  Height="70" Opacity=".7" Visibility="{Binding StatusBarVisibility, FallbackValue=collapsed}" BorderBrush="#029cc7" BorderThickness="0,0,0,2"  />
+            <WrapPanel  Visibility="{Binding StatusBarVisibility}" HorizontalAlignment="Center" VerticalAlignment="Top" Width="500" Margin="0,-60,0,0" Opacity="1">
+                <Image gif:ImageBehavior.AnimatedSource="{Binding StatusImage, FallbackValue='Images/loading_2.gif'}" Width="40" />
+                <TextBlock  Margin="5,0,0,0" TextWrapping="Wrap" >            
+                <Label  Margin="0,0,0,0" Padding="0"  Content="{Binding ProcessBarMessage, FallbackValue='Processing............'}" Width="440"  />                    
+                <Border CornerRadius="2" BorderThickness=".1" BorderBrush="Green" Background="DarkGreen" Margin="0,5">
+                     <Grid>
+                         <Grid.ColumnDefinitions>
+                             <ColumnDefinition Width="13*"/>
+                             <ColumnDefinition Width="95*"/>
+                         </Grid.ColumnDefinitions>
+                        <ProgressBar Minimum="0" Maximum="{Binding ProgressBarMaxValue}"  Margin="1,2" Value="{Binding ProgressBarValue}" Name="pbStatus" Height="10" Width="430" HorizontalAlignment="Stretch" Grid.ColumnSpan="2" />
+                        <TextBlock Text="{Binding ElementName=pbStatus, Path=Value, StringFormat={}{0:0}%}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="1" Margin="157,0,209,0" />
+                        <TextBlock Text="{Binding ProcessingTime, StringFormat={}{0:0}}" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Column="1" />
+                    </Grid>
+                </Border>
+                </TextBlock>
+            </WrapPanel>
+        </StackPanel>
+        <DockPanel Height="33" HorizontalAlignment="Stretch" Background="#029cc7" Name="dockTitle" VerticalAlignment="Top">
+            <Button Style="{StaticResource btnNoStyle}" Background="Transparent" Margin="-0,0,0,0"
+                 Height="25" Width="25" >
+                <Button.Content>
+                    <Image Source="Images\Icon.ico" Width="30" Height="20"/>
+                </Button.Content>
+            </Button>
+            <TextBlock Name="txtTitle" Text="Lepton :: ResverseGeoCoding"  FontWeight="SemiBold" FontSize="15" Margin="0,5,0,0"  Foreground="#fff" HorizontalAlignment="Left"  DockPanel.Dock="Top">
+            </TextBlock>
+            <Button  Margin="0,-35,5,0" Width="25" HorizontalAlignment="Right" DockPanel.Dock="Right"    Content="x" FontWeight="SemiBold" Foreground="#a30306" Style="{StaticResource winClose}"
+                 Height="25"    Click="btnClose_Click" >
+                <Button.Background>
+                    <LinearGradientBrush EndPoint="0.504,1.5" StartPoint="0.504,0.03">
+                        <GradientStop Color="#366BAB" Offset="0"/>
+                        <GradientStop Color="#029cc7" Offset="0.567"/>
+                    </LinearGradientBrush>
+                </Button.Background>
+            </Button>
+            <Button  Margin="0,-26,2,9" Width="25" HorizontalAlignment="Right" DockPanel.Dock="Right" Content="-" FontWeight="Bold" Foreground="#5b0103" Style="{StaticResource winClose}" Name="btnMinimized"
+                 Height="25" VerticalAlignment="Bottom" Click="btnMinimized_Click" >
+                <Button.Background>
+                    <LinearGradientBrush EndPoint="0.504,1.5" StartPoint="0.504,0.03">
+                        <GradientStop Color="#366BAB" Offset="0"/>
+                        <GradientStop Color="#029cc7" Offset="0.567"/>
+                    </LinearGradientBrush>
+                </Button.Background>
+            </Button>
+        </DockPanel>
+        <Border BorderBrush="#029cc7" BorderThickness="3,0,3,3" >
+            <Grid Margin="0,0,0,0">
+                <Border Background="White" Name="brBusy"  Opacity=".2" Margin="0,56,0,0" Height="285" HorizontalAlignment="Center" VerticalAlignment="Top" Visibility="{Binding ControlVisibility, FallbackValue=collapsed}"   />
+                <DockPanel Height="39" HorizontalAlignment="Stretch" Background="#8DB6D0" Name="SubTitle" DockPanel.Dock="Top"  VerticalAlignment="Top" Margin="-1,33,-1,0">
+                    <TextBlock Name="Title" Text="ReverseGeoCoding"  FontWeight="SemiBold" FontSize="15" Margin="251,2,233,0"  Foreground="White" HorizontalAlignment="Center"  DockPanel.Dock="Top" Height="25" Width="135" RenderTransformOrigin="0.512,0.56">
+                        <TextBlock.Effect>
+                            <DropShadowEffect ShadowDepth="4"  Direction="330"  Color="Yellow"  Opacity=".3" BlurRadius="4"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                </DockPanel>
+                <Border Grid.Column="0" Grid.Row="0" BorderBrush="#daebef" Background="#629AAF" BorderThickness="1" VerticalAlignment="Top" Padding="5" Margin="0,72,0,0" Height="230"  >
+                    <Grid Margin="7,5,7,7"  >
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="400" />
+                            <ColumnDefinition Width="130" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions >
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                            <RowDefinition Height="35" />
+                        </Grid.RowDefinitions>
+                        <Label  Content="Select File Path :-" Grid.Column="0" Grid.Row="0"  FontWeight="SemiBold" Width="132"  BorderBrush="LightBlue" Padding="0" Height="25" Grid.ColumnSpan="2" Margin="2,17,0,30" Grid.RowSpan="2"   />
+                        <TextBox x:Name="txtInputFilepath" Grid.Column="1" Grid.Row="0"   Text="{Binding Selectedfilepath, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"  Width="397" Height="60" Background="#F6F7E5" Margin="2,12,0,20" Grid.RowSpan="2"  />
+                        <Button x:Name="btnInputFile" Grid.Column="2" Grid.Row="0"  Content="&#xF067;" VerticalAlignment="Top" Command="{Binding OpenBrowseWindow}"  ToolTip="Browse Input File" Height="30" Margin="4,12,76,0" Grid.RowSpan="2" Click="btnInputFile_Click_1"/>
+                        <Label  Content="Output Path  :-" Grid.Column="0" Grid.Row="1"  FontWeight="SemiBold" Width="130"  BorderBrush="LightBlue" Padding="0" Height="26" Grid.ColumnSpan="2" Margin="4,21,0,25" Grid.RowSpan="2" RenderTransformOrigin="0.5,1"   />
+                        <TextBox x:Name="txtoutputdrive" Grid.Column="1" Grid.Row="1"  Text="{Binding Outputfilepath, UpdateSourceTrigger=PropertyChanged}"  TextWrapping="Wrap"  Width="396" Height="30" Background="#F6F7E5" Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center"  />
+
+                        <Button Grid.Column="1" Grid.Row="3" Content="Template &#xf101;" FontWeight="SemiBold" CommandParameter="01"  Name="btntemplate"  Width="112"  Background="#029cc7" Click="btntemplate_Click" Margin="2,3,0,0" Height="28" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                        <Button Grid.Column="1" Grid.Row="3" Content="Reverse GeoCoding &#xf101;" FontWeight="SemiBold" CommandParameter="02"  Name="btnReverseGeoCoding"  Width="146"  Background="#029cc7" Click="btnReverseGeoCoding_Click" Height="28" />
+                        <Button Grid.Column="1" Grid.Row="3" Content="GeoCoding &#xf101;" FontWeight="SemiBold" CommandParameter="03"  Name="btnforwardgeocoding"  Width="114"  Background="#029cc7" Click="btnForwardGeoCoding_Click" Height="28" HorizontalAlignment="Left" Margin="300,0,0,0" RenderTransformOrigin="0.733,-0.036" Grid.ColumnSpan="2" />
+
+                        <Button Grid.Column="1" Grid.Row="4" Content="Close Tool &#xf101;" FontWeight="SemiBold" CommandParameter="5"  Name="btnclose"  Width="112"  Background="#029cc7" Click="btnClose_Click" Margin="328,32,0,0" Height="28" Grid.RowSpan="2" VerticalAlignment="Top" HorizontalAlignment="Left" Grid.ColumnSpan="2" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+
