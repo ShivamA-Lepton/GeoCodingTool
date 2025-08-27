@@ -23,6 +23,7 @@ namespace ReverseGeoCoding
     {
         string WindowAtTop = WebConfigurationManager.AppSettings["WindowAtTop"];
         Thread processed = null; DownloadTemplate downloadTemplate = null; UploadTemplate uploadTemplate = null;
+        CleanAddress CleanAddress= null;
         public MainWindow()
         {
             File_processing Fileprocessing = null;
@@ -228,6 +229,20 @@ namespace ReverseGeoCoding
                     ProgressBar(true);
                     uploadTemplate = new UploadTemplate(GlobalClass.InputFilepath, GlobalClass.OutputFilepath);
                     processed = new Thread(uploadTemplate.ForwardGeoCoding_Merged);
+                    processed.Start();
+                }
+            }
+            catch (Exception ex) { ProgressBar(false); System.Windows.Forms.MessageBox.Show(ex.Message.ToString() + "" + ex.Source.ToString(), "ReverseGeoCoding", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information); }
+        }
+        private void btnCleanAddress_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (Validation())
+                {
+                    ProgressBar(true);
+                    CleanAddress = new CleanAddress(GlobalClass.InputFilepath, GlobalClass.OutputFilepath);
+                    processed = new Thread(CleanAddress.CleanCustomerAddress);
                     processed.Start();
                 }
             }

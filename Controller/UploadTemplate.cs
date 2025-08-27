@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using DocumentFormat.OpenXml.Bibliography;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ReverseGeoCoding.Common;
 using System;
 using System.Collections.Generic;
@@ -225,7 +227,6 @@ namespace ReverseGeoCoding.Controller
 
             }
         }
-
         public void ForwardGeoCoding_Merged()
         {
             var time = DateTime.Now.ToString();
@@ -237,17 +238,20 @@ namespace ReverseGeoCoding.Controller
 
             DataTable[] dtinput = HelperClass.GetDataTableConvertion(inputfilefolder);
             DataTable dtinputxlsx = dtinput[0];
+            dtinputxlsx.Columns.Add("Output Address", typeof(string));
             dtFinalOutput = dtinputxlsx.Clone();
 
             // Ensure output columns exist
-            if (!dtFinalOutput.Columns.Contains("Output Lat/Long"))
-                dtFinalOutput.Columns.Add("Output Lat/Long", typeof(string));
             if (!dtFinalOutput.Columns.Contains("Output Address"))
                 dtFinalOutput.Columns.Add("Output Address", typeof(string));
-            if (!dtFinalOutput.Columns.Contains("Error"))
-                dtFinalOutput.Columns.Add("Error", typeof(string));
+            if (!dtFinalOutput.Columns.Contains("Output Lat/Long"))
+                dtFinalOutput.Columns.Add("Output Lat/Long", typeof(string));
+            if (!dtFinalOutput.Columns.Contains("Confidence_Radius"))
+                dtFinalOutput.Columns.Add("Confidence_Radius", typeof(string));
             if (!dtFinalOutput.Columns.Contains("Source"))
                 dtFinalOutput.Columns.Add("Source", typeof(string));
+            if (!dtFinalOutput.Columns.Contains("Error"))
+                dtFinalOutput.Columns.Add("Error", typeof(string));
 
             #region Required Column Validation
             string requiredColumns = "FEASIBILITY_ID,Input Address";
@@ -269,6 +273,57 @@ namespace ReverseGeoCoding.Controller
             }
             #endregion
 
+
+            // Process each row
+            foreach (DataRow row in dtinputxlsx.Rows)
+            {
+                try
+                {
+                    string rawAddress = row["Input Address"].ToString();
+                    //string cleanedAddress = RemoveDuplicates(rawAddress);
+
+                    // Extract pincode
+                    string pincode = System.Text.RegularExpressions.Regex.Match(rawAddress, @"\b\d{6}\b").Value;
+
+                    string city = "", district = "", state = "";
+
+                    // If pincode exists, lookup using API
+                    if (!string.IsNullOrEmpty(pincode))
+                    {
+                        try
+                        {
+                            using (var client = new System.Net.WebClient())
+                            {
+                                string url = $"https://api.postalpincode.in/pincode/{pincode}";
+                                string json = client.DownloadString(url);
+
+                                var arr = Newtonsoft.Json.Linq.JArray.Parse(json);
+                                var postOffice = arr[0]["PostOffice"]?.First;
+                                if (postOffice != null)
+                                {
+                                    district = postOffice["District"]?.ToString() ?? "";
+                                    state = postOffice["State"]?.ToString() ?? "";
+                                    city = postOffice["Region"]?.ToString() ?? ""; // Region used as "City"
+                                }
+                            }
+                        }
+                        catch (Exception exApi)
+                        {
+                            row["Error"] = "API Error: " + exApi.Message;
+                        }
+                    }
+
+                    
+                    string cleanedagainAddress = RemoveDuplicates(rawAddress, city, district, state);
+                    // Update row directly
+                    row["Output Address"] = cleanedagainAddress;
+                }
+                catch (Exception ex)
+                {
+                    
+                }
+            }
+
             int ik = 0;
             double result = 0;
 
@@ -281,20 +336,29 @@ namespace ReverseGeoCoding.Controller
                 string latLong = "";
                 string outputAddress = "";
                 string source = "";
+                string resp_result = "";
+                int confidence = 0;
                 string uniqueId = row["FEASIBILITY_ID"]?.ToString().Trim();
-                string address = row["Input Address"]?.ToString().Trim();
+                string address = row["Output Address"]?.ToString().Trim();
 
                 if (string.IsNullOrWhiteSpace(uniqueId))
                     errors += "FEASIBILITY_ID is empty. ";
                 if (string.IsNullOrWhiteSpace(address))
-                    errors += "Input Address is empty. ";
+                    errors += "Output Address is empty. ";
 
                 if (string.IsNullOrEmpty(errors))
                 {
+                    resp_result = CallDLVApi(address);
+                    var jsonObj = JObject.Parse(resp_result);
+
+                     confidence = jsonObj["confidence_radius"]?.ToObject<int>() ?? 0;
                     // Select API based on confidence
-                    if (confidenceThreshold <= 500)
+                    if (confidence <= confidenceThreshold)
                     {
-                        (latLong, outputAddress, errors, source) = CallDLVApi(address);
+                       double lat = jsonObj["geocode"]?["lat"]?.ToObject<double>() ?? 0;
+                        double lng = jsonObj["geocode"]?["lng"]?.ToObject<double>() ?? 0;
+                        latLong = lat + " , " + lng;
+                        source = "DLV API";
                     }
                     else
                     {
@@ -308,11 +372,12 @@ namespace ReverseGeoCoding.Controller
                 {
                     newRow[col.ColumnName] = row[col.ColumnName];
                 }
+                newRow["Confidence_Radius"] = confidence;
                 newRow["Output Lat/Long"] = latLong;
-                newRow["Output Address"] = outputAddress;
+                newRow["Output Address"] = address;
                 newRow["Error"] = errors.Trim();
                 newRow["Source"] = source;
-                dtFinalOutput.Rows.Add(newRow);
+                dtFinalOutput.Rows.Add(newRow); 
 
                 #region Progress
                 try
@@ -345,18 +410,73 @@ namespace ReverseGeoCoding.Controller
                 GlobalClass.ChangeForm.OnChangeForm(12);
             }
         }
+        private static string RemoveDuplicates(string input, string city, string district, string state)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return input;
 
+            // Step 1: Insert space between letters & digits (e.g. "KHERI262723" -> "KHERI 262723")
+            string normalized = System.Text.RegularExpressions.Regex.Replace(input, @"([A-Za-z])(\d)", "$1 $2");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"(\d)([A-Za-z])", "$1 $2");
 
+            // Step 2: Split into tokens
+            var matches = System.Text.RegularExpressions.Regex.Matches(normalized, @"[A-Za-z\-]+|\d+");
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var result = new List<string>();
+            string pincode = null;
+
+            foreach (System.Text.RegularExpressions.Match m in matches)
+            {
+                string token = m.Value.Trim(new char[] { ',', '.', '-' });
+                if (string.IsNullOrWhiteSpace(token)) continue;
+
+                // Detect pincode
+                if (int.TryParse(token, out _) && token.Length == 6)
+                {
+                    pincode = token;
+                    continue; // will add later
+                }
+
+                // Normalize (remove suffix like "-I", "-II")
+                string normToken = System.Text.RegularExpressions.Regex.Replace(token, @"[-_]\w+$", "");
+
+                // Keep first occurrence only
+                if (seen.Add(normToken.ToLower()))
+                {
+                    result.Add(token); // preserve original casing in output
+                }
+            }
+
+            // Step 3: Build cleaned main address
+            var finalAddress = string.Join(" ", result).Trim();
+
+            // Step 4: Append city, district, state with a single comma before first one
+            var locationParts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(city) && !seen.Contains(city.ToLower())) locationParts.Add(city);
+            if (!string.IsNullOrWhiteSpace(district) && !seen.Contains(district.ToLower())) locationParts.Add(district);
+            if (!string.IsNullOrWhiteSpace(state) && !seen.Contains(state.ToLower())) locationParts.Add(state);
+
+            if (locationParts.Count > 0)
+            {
+                finalAddress += ", " + string.Join(", ", locationParts);
+            }
+
+            // Step 5: Add pincode at the end with hyphen
+            if (!string.IsNullOrWhiteSpace(pincode) && !finalAddress.Contains(pincode))
+                finalAddress += " - " + pincode;
+
+            return finalAddress.Trim();
+        }
         /// <summary>
         /// Calls DLV API
         /// </summary>
-        private (string latLong, string outputAddress, string error, string source) CallDLVApi(string address)
+        public string   CallDLVApi(string address)
         {
             string latLong = "";
             string outputAddress = "";
             string error = "";
             string source = "DLV";
-
+            string resultres = "";
             try
             {
                 string apiKey = ConfigurationManager.AppSettings["DLVApiKey"];
@@ -379,13 +499,15 @@ namespace ReverseGeoCoding.Controller
                 using (var streamReader = new StreamReader(response.GetResponseStream()))
                 {
                     string resultJson = streamReader.ReadToEnd();
+                   
                     dynamic root = JsonConvert.DeserializeObject(resultJson);
 
                     if (root != null && root.success == true)
                     {
-                        double lat = root.result.geocode.lat;
-                        double lng = root.result.geocode.lng;
-                        latLong = $"{lat},{lng}";
+                        resultres = root.result.ToString();
+                      // double lat = root.result.geocode.lat;
+                      //  double lng = root.result.geocode.lng;
+                        //latLong = $"{lat},{lng}";
                         //outputAddress = root.data.formatted_address?.ToString();
                     }
                     else
@@ -399,9 +521,9 @@ namespace ReverseGeoCoding.Controller
                 error += $"DLV Exception: {ex.Message}. ";
             }
 
-            return (latLong, outputAddress, error, source);
-        }
+            return resultres;
 
+        }
         /// <summary>
         /// Calls Google Geocoding API
         /// </summary>
@@ -410,7 +532,7 @@ namespace ReverseGeoCoding.Controller
             string latLong = "";
             string outputAddress = "";
             string error = "";
-            string source = "Google";
+            string source = "Geo-Coding API";
 
             try
             {
@@ -469,8 +591,6 @@ namespace ReverseGeoCoding.Controller
 
             return (latLong, outputAddress, error, source);
         }
-
-
         //DLV API
         public void ForwardGeoCoding()
         {
@@ -640,7 +760,6 @@ namespace ReverseGeoCoding.Controller
                 GlobalClass.ChangeForm.OnChangeForm(12);
             }
         }
-
         //Google API
         public void ForwardGeoCoding_()
         {

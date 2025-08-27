@@ -197,6 +197,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Controller\CleanAddress.cs" />
     <Compile Include="Controller\DownloadTemplate.cs" />
     <Compile Include="Controller\UploadTemplate.cs" />
     <Compile Include="FromBackend.cs" />
